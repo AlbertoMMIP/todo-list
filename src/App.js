@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { RecoilRoot, atom, selector, useRecoilValue, useSetRecoilState, useRecoilState } from 'recoil'; 
 import './App.css';
 
@@ -7,9 +7,13 @@ function App() {
     <RecoilRoot>
       <div className="App">
         <header className="App-header">
-          <TodoFilter />
-          <ItemCreator />
-          <TodoList />
+          <React.Suspense fallback={<h1>Cargando . . .</h1>}>
+            <UserData />
+            <TodoFilter />
+            <TodoStats />
+            <ItemCreator />
+            <TodoList />
+          </React.Suspense>
         </header>
       </div>
     </RecoilRoot>
@@ -45,6 +49,31 @@ const todoFilterSelector = selector({
   }
 })
 
+const todoStatsSelector = selector({
+  key: 'todoStatsSelector',
+  get: ({ get }) => {
+    const list = get(todoListState);
+    const toDo = list.filter(item => !item.isCompleted).length;
+    const notTodo = list.filter(item => item.isCompleted).length;
+    const completedPercentage = list.length === 0 ? 0 : notTodo/list.length;
+    const data = {
+      total: list.length,
+      toDo,
+      notTodo,
+      completedPercentage
+    }
+    return data;
+  }
+})
+
+const userDataSelector = selector({
+  key: 'userDataSelector',
+  get: async () => {
+    const response = await fetch('http://localhost:3001/api/customers');
+    return await response.json();
+  }
+})
+
 function ItemCreator () {
   const [text, setText] = useState('');
   const setNewTodo = useSetRecoilState(todoListState);
@@ -65,16 +94,6 @@ function ItemCreator () {
     </div>
   );
 }
-
-/*
-const todos = [
-  { id: 1, text: "Todo 1", isCompleted: false },
-  { id: 2, text: "Todo 2", isCompleted: true },
-  { id: 3, text: "Todo 3", isCompleted: false },
-  { id: 4, text: "Todo 4", isCompleted: true },
-  { id: 5, text: "Todo 5", isCompleted: false },
-];
-*/
 
 function TodoList () {
   const todos = useRecoilValue(todoFilterSelector);
@@ -152,6 +171,28 @@ function TodoFilter () {
       </select>
     </div>
   )
+}
+
+function TodoStats () {
+  const { total, toDo, notTodo, completedPercentage } = useRecoilValue(todoStatsSelector);
+
+  return (
+    <div>
+      <span>Tareas Totales: {total} </span> <br />
+      <span>Tareas por hacer: {toDo} </span> <br />
+      <span>Tareas realizadas: {notTodo}  </span> <br />
+      <span>Progreso: % {completedPercentage * 100} </span>
+    </div>
+  );
+}
+
+function UserData () {
+  const users = useRecoilValue(userDataSelector);
+  const user = users.customers[0];
+  const userName = user.name;
+  return (
+    <h1>{userName}</h1>
+  );
 }
 
 export default App;
